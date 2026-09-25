@@ -25,12 +25,37 @@ const DEFAULT_CWD = cfg.defaultCwd ? String(cfg.defaultCwd) : os.homedir();
 
 function log() { console.error('[' + new Date().toISOString() + '][agent]', ...arguments); }
 
+function findBash() {
+  const explicit = String(cfg.bashPath || process.env.BRIDGE_BASH || '');
+  if (explicit) return explicit;
+  const tried = [];
+  const add = (...ps) => { for (const x of ps) if (x) tried.push(x); };
+  // 1) 从 git 可执行文件位置反推（最可靠）
+  try {
+    const out = require('child_process').execSync('where git', { encoding: 'utf8' });
+    const gitExe = out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
+    if (gitExe) add(path.join(path.dirname(path.dirname(gitExe)), 'bin', 'bash.exe'));
+  } catch (e) { }
+  // 2) 常见安装路径
+  add(
+    'C:\\Program Files\\Git\\bin\\bash.exe',
+    'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
+    path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Git', 'bin', 'bash.exe')
+  );
+  // 3) PATH 中的 bash
+  for (const d of String(process.env.PATH || '').split(path.delimiter)) if (d) add(path.join(d, 'bash.exe'));
+  for (const c of tried) {
+    try { if (fs.existsSync(c)) return c; } catch (e) { }
+  }
+  return '';
+}
+
 function pickShell() {
   const pref = String(cfg.shell || 'auto');
   if (pref && pref !== 'auto') return pref;
   if (process.platform === 'win32') {
-    const gitBash = 'C:\\Program Files\\Git\\bin\\bash.exe';
-    if (fs.existsSync(gitBash)) return gitBash;
+    const bash = findBash();
+    if (bash) return bash;
     return process.env.ComSpec || 'cmd.exe';
   }
   return 'bash';
