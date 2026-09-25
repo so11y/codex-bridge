@@ -60,8 +60,8 @@ description: 把用户的话翻译成日文转发给远端 codex 执行，执行
    - 【发送给 codex 的日文】原文 + 中文对照
    - 【执行过程】完整日志的中文翻译（路径、命令、代码原样保留）
    - 【codex 回答】完整翻译
-   - **产出文件优先直接落盘到本机**：如果 codex 能通过 project executor（本机命令 / 挂载目录）写文件，就在问题里明确要求它**把成果写入【作業ディレクトリ】（或指定的项目路径）**——这样文件直接出现在用户电脑上，**不需要再复制**
-   - 只有在 codex 只能把文件留在远端时（executor 不可用等），才走复制流程：`ssh + base64` 取回 → 写入 `[Environment]::GetFolderPath('Desktop')` + 工作区备份 → `browser.preview` 预览
+   - **产出文件说明**：只要 codex 通过 project executor / 项目挂载目录执行，文件会**自动落盘到本机项目目录**——不需要额外指令，也不要再去复制
+   - 只有在文件确实留在远端时（executor 不可用、或它写到了远端临时目录），才走兜底复制：`ssh + base64` 取回 → 写入 `[Environment]::GetFolderPath('Desktop')` + 工作区备份 → `browser.preview` 预览
 
 ## 会话连续性
 
