@@ -1,5 +1,5 @@
 ﻿# 公共库：读取技能配置、生成 askpass、远程执行（被 scripts/*.ps1 引用）
-$ErrorActionPreference = 'Stop'
+# 注意：不要在这里设置 $ErrorActionPreference（点源会传染给调用者）
 
 $script:SkillRoot = Split-Path -Parent $PSScriptRoot
 $script:CfgPath = Join-Path $script:SkillRoot 'config.json'

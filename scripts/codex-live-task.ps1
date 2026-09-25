@@ -50,7 +50,10 @@ $cmdLines = @(
 )
 Set-Content -Path $tmpCmd -Value $cmdLines -Encoding Ascii
 
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 $taskOut = & cmd /c $tmpCmd 2>&1
+$ErrorActionPreference = $prevEap
 "---- schtasks 输出 ----"
 $taskOut | Out-String | Write-Output
 
