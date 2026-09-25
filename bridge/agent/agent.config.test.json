@@ -1,0 +1,8 @@
+{
+  "server": "127.0.0.1",
+  "port": 9453,
+  "client": "test-local",
+  "token": "TESTTOKEN123",
+  "shell": "auto",
+  "reconnectMs": 2000
+}

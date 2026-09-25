@@ -1,0 +1,19 @@
+{
+  "server": {
+    "host": "your-server.example.com",
+    "user": "youruser",
+    "password": "yourpassword"
+  },
+  "remote": {
+    "workdir": "/home/youruser",
+    "streamLog": "/tmp/codex_stream_full.txt",
+    "streamAnswer": "/tmp/codex_stream_ans.txt",
+    "sessionFile": "/tmp/codex_relay_session.txt"
+  },
+  "codex": {
+    "binPath": "/home/youruser/.local/node/bin/codex"
+  },
+  "live": {
+    "port": 7721
+  }
+}

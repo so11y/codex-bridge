@@ -1,0 +1,8 @@
+{
+  "port": 9453,
+  "controlPort": 9454,
+  "defaultClient": "test-local",
+  "clients": {
+    "test-local": "TESTTOKEN123"
+  }
+}
