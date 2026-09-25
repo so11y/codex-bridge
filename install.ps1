@@ -84,7 +84,12 @@ if (-not $SkipLiveSetup) {
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'scripts\codex-live-task.ps1')
 }
 
+# 桥接客户端（自动注册到服务器 + 隐藏自愈任务）
+Write-Host ""
+Write-Host "正在配置桥接客户端（自动注册）..."
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'client\install-client.ps1') -ClientId ($env:COMPUTERNAME.ToLower())
+
 Write-Host ""
 Write-Host "安装完成 ✓" -ForegroundColor Green
-Write-Host "用法：在 opencode 里 @codex-jp-relay 加上你的指令即可（默认续上次会话，说「新会话」则新开）。"
-Write-Host "右侧直播：安装脚本输出的 URL（默认 http://127.0.0.1:7721/）"
+Write-Host "用法：在 opencode 里 @codex-bridge 加上你的指令即可（默认续上次会话，说「新会话」则新开）。"
+Write-Host "右侧直播：http://127.0.0.1:7721/"
