@@ -10,3 +10,6 @@ scripts/codex-live-launch.vbs
 node_modules/
 .DS_Store
 Thumbs.db
+
+# 运行时生成的启动器
+client/launch-*.vbs

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // bridge server —— 运行在服务器上：接受多个 agent 的反向连接，并向本地 CLI 提供控制接口。
 const net = require('net');
+const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -21,7 +22,7 @@ const waiters = new Map(); // reqId -> { onMsg }
 
 function log() { console.error('[' + new Date().toISOString() + '][bridge]', ...arguments); }
 
-const agentServer = net.createServer((sock) => {
+function onAgent(sock) {
   let clientId = null;
   let buf = '';
   const nonce = crypto.randomBytes(16).toString('hex');
@@ -40,6 +41,8 @@ const agentServer = net.createServer((sock) => {
         const expect = token ? crypto.createHmac('sha256', token).update(nonce).digest('hex') : '';
         if (token && msg.mac === expect) {
           clientId = String(msg.client);
+          const prev = agents.get(clientId);
+          if (prev && prev.sock !== sock) { try { prev.sock.destroy(); } catch (e) {} }
           agents.set(clientId, { sock, host: msg.host, platform: msg.platform, shell: msg.shell, since: Date.now() });
           sock.write(JSON.stringify({ op: 'ready', client: clientId }) + '\n');
           log('agent connected: ' + clientId + ' (' + msg.host + ', ' + msg.platform + ', ' + msg.shell + ')');
@@ -58,10 +61,26 @@ const agentServer = net.createServer((sock) => {
     }
   });
 
-  sock.on('close', () => { if (clientId) { agents.delete(clientId); log('agent disconnected: ' + clientId); } });
+  sock.on('close', () => {
+    if (clientId && agents.get(clientId) && agents.get(clientId).sock === sock) {
+      agents.delete(clientId);
+      log('agent disconnected: ' + clientId);
+    }
+  });
   sock.on('error', () => {});
-});
-agentServer.listen(PORT, '0.0.0.0', () => log('listening for agents on 0.0.0.0:' + PORT));
+}
+
+const BIND = String(cfg.bind || '0.0.0.0');
+let agentServer;
+if (cfg.tls) {
+  agentServer = tls.createServer({
+    key: fs.readFileSync(path.join(__dirname, 'key.pem')),
+    cert: fs.readFileSync(path.join(__dirname, 'cert.pem')),
+  }, onAgent);
+} else {
+  agentServer = net.createServer(onAgent);
+}
+agentServer.listen(PORT, BIND, () => log('listening for agents on ' + BIND + ':' + PORT + (cfg.tls ? ' (TLS)' : '')));
 
 let reqSeq = 0;
 const controlServer = net.createServer((cliSock) => {

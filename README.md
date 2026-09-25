@@ -77,7 +77,14 @@ node bridge/server/bridge-cli.js exec -- echo hello
 node bridge/server/bridge-cli.js list --path .
 ```
 
-> `*.test.json` 只是自测夹具：指向 `127.0.0.1`、使用假 token `TESTTOKEN123`，**不包含任何真实凭据**。生产使用时请自行生成配置并加 TLS。
+生产用法（直连 + TLS，客户端一键安装）：
+
+1. 服务器：`~/bridge/` 放 `bridge-server.js` / `bridge-cli.js` / `config.json`（`tls: true`），用 crontab 守卫自愈；自签证书 `cert.pem` 由客户端安装时取回并固定
+2. 客户端：`client\install-client.ps1`（取 CA → 写 `agent.config.json` → 建隐藏自愈任务 `BridgeAgent`）
+3. 可选：`-ViaSshForward` 走 SSH 本地转发（无需开放端口）
+4. 从服务器操作客户端：`node bridge-cli.js exec -- <command>` / `read` / `write` / `list`
+
+> `*.test.json` 只是自测夹具：指向 `127.0.0.1`、使用假 token `TESTTOKEN123`，**不包含任何真实凭据**。`client/launch-*.vbs` 为运行时生成物，不入库。
 
 ## 安全提示
 

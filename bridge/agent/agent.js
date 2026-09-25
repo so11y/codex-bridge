@@ -2,6 +2,7 @@
 // bridge agent —— 运行在用户电脑上，主动反向连接 bridge 服务器，执行命令并流式回传。
 // 跨平台（Windows / macOS / Linux），零第三方依赖。
 const net = require('net');
+const tls = require('tls');
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
@@ -10,7 +11,7 @@ const { spawn } = require('child_process');
 
 const cfgPath = process.env.BRIDGE_AGENT_CONFIG || path.join(__dirname, 'agent.config.json');
 let cfg = {};
-try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')); } catch (e) {
+try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8').replace(/^\uFEFF/, '')); } catch (e) {
   console.error('[agent] cannot read config: ' + cfgPath + ' -> ' + e.message);
   process.exit(1);
 }
@@ -114,7 +115,22 @@ function doList(msg) {
 
 function connect() {
   buf = ''; authed = false;
-  sock = net.connect({ host: HOST, port: PORT }, () => log('connecting -> ' + HOST + ':' + PORT));
+  const onConnected = () => log('connecting -> ' + HOST + ':' + PORT + (cfg.tls ? ' (TLS)' : ''));
+  if (cfg.tls) {
+    const tlsOpts = {
+      host: HOST,
+      port: PORT,
+      servername: cfg.tlsServername || 'bridge',
+      checkServerIdentity: () => undefined,
+    };
+    if (cfg.caFile) {
+      const caPath = path.isAbsolute(cfg.caFile) ? cfg.caFile : path.join(__dirname, cfg.caFile);
+      try { tlsOpts.ca = [fs.readFileSync(caPath, 'utf8')]; } catch (e) { log('cannot read caFile: ' + e.message); }
+    }
+    sock = tls.connect(tlsOpts, onConnected);
+  } else {
+    sock = net.connect({ host: HOST, port: PORT }, onConnected);
+  }
   sock.setKeepAlive(true, 15000);
   sock.setNoDelay(true);
   sock.on('data', (d) => {
