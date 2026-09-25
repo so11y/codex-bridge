@@ -95,7 +95,11 @@ sh.Run "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File 
     [System.IO.File]::WriteAllText($p.Vbs, $vbs, [System.Text.Encoding]::ASCII)
 }
 
-# 5. 创建/更新自愈任务（wscript 触发，隐藏、无窗口）
+# 5. 先停掉旧 agent（确保新配置生效），再创建/更新自愈任务
+Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -like '*agent.js*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
 foreach ($p in $pairs) {
     $tmpCmd = Join-Path $env:TEMP ("opencode\" + $p.Task + ".cmd")
     New-Item -ItemType Directory -Force -Path (Split-Path $tmpCmd -Parent) | Out-Null
