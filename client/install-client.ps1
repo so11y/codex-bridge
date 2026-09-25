@@ -32,8 +32,10 @@ import json,sys
 p='/home/so11y/bridge/config.json'
 c=json.load(open(p))
 c.setdefault('clients',{})[sys.argv[1]]=sys.argv[2]
+if not c.get('defaultClient') or c['defaultClient'] not in c['clients']:
+    c['defaultClient']=sys.argv[1]
 json.dump(c,open(p,'w'),indent=2)
-print('registered:', sys.argv[1])
+print('registered:', sys.argv[1], '| default:', c['defaultClient'])
 " "$(echo 'CB64' | base64 -d)" "$(echo 'TB64' | base64 -d)"
 pkill -f 'bridge-server.js' 2>/dev/null
 sleep 1

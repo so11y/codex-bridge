@@ -85,6 +85,9 @@ connect((msg) => {
       if (msg.error) console.error('[cli] error: ' + msg.error);
       process.exitCode = exitCode;
       process.exit(exitCode);
+    } else if (msg.ev === 'error') {
+      console.error('[cli] error: ' + msg.error);
+      process.exit(1);
     }
     return;
   }

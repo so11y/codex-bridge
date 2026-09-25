@@ -113,7 +113,7 @@ function routeControl(cliSock, req) {
   const clientId = req.client || cfg.defaultClient;
   const agent = agents.get(clientId);
   if (!agent) {
-    reply(cliSock, { ev: 'error', error: 'client not connected: ' + clientId });
+    reply(cliSock, { ev: 'exit', code: 127, error: 'client not connected: ' + clientId });
     try { cliSock.end(); } catch (e) {}
     return;
   }
