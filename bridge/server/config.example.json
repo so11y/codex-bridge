@@ -1,0 +1,9 @@
+{
+  "port": 9443,
+  "controlPort": 9444,
+  "defaultClient": "my-pc",
+  "clients": {
+    "my-pc": "REPLACE_WITH_A_LONG_RANDOM_SECRET",
+    "another-pc": "ANOTHER_LONG_RANDOM_SECRET"
+  }
+}

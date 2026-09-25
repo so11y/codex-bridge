@@ -56,6 +56,29 @@ codex-bridge/
     └── server/            # 服务端 + CLI
 ```
 
+## 桥接 bridge（实验性）
+
+`bridge/` 是一个跨平台桥接，用来替代 SSH/OpenSSH 依赖，让"别的电脑"安装即用：
+
+- `bridge/agent/agent.js` —— 客户端 agent（Node，零第三方依赖）：**反向连接**服务器、token 握手鉴权、执行命令并流式回传、断线自动重连
+- `bridge/server/bridge-server.js` —— 服务端：接受多个 agent 连接（多客户端路由）+ 本机控制口（仅 `127.0.0.1`）
+- `bridge/server/bridge-cli.js` —— 本机 CLI：`status / exec / read / write / list`
+
+本机自测（不需要服务器）：
+
+```sh
+# 1) 启动服务端与 agent（用仓库里的测试配置；含假 token，勿用于生产）
+BRIDGE_SERVER_CONFIG=bridge/server/config.test.json node bridge/server/bridge-server.js
+BRIDGE_AGENT_CONFIG=bridge/agent/agent.config.test.json  node bridge/agent/agent.js
+
+# 2) 从 CLI 操作远端
+node bridge/server/bridge-cli.js status
+node bridge/server/bridge-cli.js exec -- echo hello
+node bridge/server/bridge-cli.js list --path .
+```
+
+> `*.test.json` 只是自测夹具：指向 `127.0.0.1`、使用假 token `TESTTOKEN123`，**不包含任何真实凭据**。生产使用时请自行生成配置并加 TLS。
+
 ## 安全提示
 
 - `config.json`、`scripts/codex-live.cmd`、`scripts/codex-live-launch.vbs` 含本机/服务器信息，**已被 `.gitignore` 排除**，不要提交

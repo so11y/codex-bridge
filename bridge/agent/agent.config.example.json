@@ -1,0 +1,9 @@
+{
+  "server": "your-bridge-server.example.com",
+  "port": 9443,
+  "client": "my-pc",
+  "token": "REPLACE_WITH_A_LONG_RANDOM_SECRET",
+  "shell": "auto",
+  "reconnectMs": 2000,
+  "defaultCwd": ""
+}
