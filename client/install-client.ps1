@@ -23,33 +23,36 @@ if (-not $Token -and (Test-Path $tokenFile) -and -not $Force) {
 if (-not $Token) {
     $Token = -join ((1..48) | ForEach-Object { '0123456789abcdef'[(Get-Random -Maximum 16)] })
     Write-Host "未提供 token，正在向服务器自动注册客户端「$ClientId」..." -ForegroundColor Cyan
+
+    # 机器指纹（主板 UUID，稳定；异常时退回 MAC，再退回随机 GUID）
+    $machineId = ''
+    try { $machineId = [string](Get-CimInstance Win32_ComputerSystemProduct -ErrorAction Stop).UUID } catch { }
+    if (-not $machineId -or $machineId -match '^0+$') {
+        try {
+            $machineId = (Get-CimInstance Win32_NetworkAdapterConfiguration -ErrorAction Stop |
+                Where-Object { $_.MACAddress } | Select-Object -First 1).MACAddress
+        } catch { }
+    }
+    if (-not $machineId) { $machineId = [guid]::NewGuid().ToString() }
+    $machineId = $machineId.ToLower()
+
     . (Join-Path $root 'scripts\_common.ps1')
-    $cB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($ClientId))
-    $tB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Token))
     $remote = @'
-python3 -c "
-import json,sys
-p='/home/so11y/bridge/config.json'
-c=json.load(open(p))
-c.setdefault('clients',{})[sys.argv[1]]=sys.argv[2]
-if not c.get('defaultClient') or c['defaultClient'] not in c['clients']:
-    c['defaultClient']=sys.argv[1]
-json.dump(c,open(p,'w'),indent=2)
-print('registered:', sys.argv[1], '| default:', c['defaultClient'])
-" "$(echo 'CB64' | base64 -d)" "$(echo 'TB64' | base64 -d)"
-pkill -f 'bridge-server.js' 2>/dev/null
-sleep 1
-sh /home/so11y/bridge/ensure-bridge.sh
-sleep 1
-ss -ltn | grep -q 9443 && echo BRIDGE_RESTARTED || echo BRIDGE_NOT_LISTENING
+N=/home/so11y/.local/node/bin/node
+C=/home/so11y/bridge/bridge-cli.js
+$N $C register --id IDVAL --machine MACHVAL --token TOKVAL
 '@
-    $remote = $remote.Replace('CB64', $cB64).Replace('TB64', $tB64)
+    $remote = $remote.Replace('IDVAL', $ClientId).Replace('MACHVAL', $machineId).Replace('TOKVAL', $Token)
     $out = Invoke-RemoteScript -Text $remote
     Write-Host ($out | Out-String)
-    if ($out -notmatch 'registered:') { throw "自动注册失败（检查服务器 SSH / ~/bridge/config.json）" }
-    if ($out -notmatch 'BRIDGE_RESTARTED') { throw "bridge-server 重启失败" }
+    $assigned = ($out -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Last 1)
+    if (-not $assigned) { throw "自动注册失败（检查服务器 SSH / bridge-server）" }
+    if ($assigned -ne $ClientId) {
+        Write-Host "检测到重名，服务器分配了新 id：$assigned" -ForegroundColor Yellow
+        $ClientId = $assigned
+    }
     Set-Content -Path $tokenFile -Value $Token -Encoding Ascii -NoNewline
-    Write-Host "已注册并保存 token（客户端 id: $ClientId）" -ForegroundColor Green
+    Write-Host "已注册（客户端 id: $ClientId）" -ForegroundColor Green
 }
 
 $agentDir = Join-Path $root 'bridge\agent'

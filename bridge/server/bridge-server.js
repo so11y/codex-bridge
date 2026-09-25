@@ -22,6 +22,43 @@ const waiters = new Map(); // reqId -> { onMsg }
 
 function log() { console.error('[' + new Date().toISOString() + '][bridge]', ...arguments); }
 
+function saveConfig() {
+  try { fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n'); }
+  catch (e) { log('save config failed: ' + e.message); }
+}
+function tokenOf(entry) {
+  if (!entry) return '';
+  return typeof entry === 'string' ? entry : String(entry.token || '');
+}
+// 注册/更新客户端：同机重复安装保持原 id；不同机器重名时自动加后缀
+function registerClient(desiredId, machineId, token) {
+  const desired = String(desiredId || '').trim() || 'client';
+  const machine = String(machineId || '').trim();
+  const existing = CLIENTS[desired];
+  if (!existing) {
+    CLIENTS[desired] = machine ? { token, machine } : { token };
+    if (!cfg.defaultClient || !CLIENTS[cfg.defaultClient]) cfg.defaultClient = desired;
+    saveConfig();
+    return { id: desired };
+  }
+  const prev = typeof existing === 'string' ? { token: existing, machine: '' } : existing;
+  if (machine && prev.machine && prev.machine === machine) {
+    CLIENTS[desired] = { token, machine };
+    saveConfig();
+    return { id: desired, updated: true };
+  }
+  if (!machine || !prev.machine) {
+    CLIENTS[desired] = { token, machine: prev.machine || machine };
+    saveConfig();
+    return { id: desired, updated: true };
+  }
+  let n = 2; let cand = desired + '-' + n;
+  while (CLIENTS[cand]) { n++; cand = desired + '-' + n; }
+  CLIENTS[cand] = { token, machine };
+  saveConfig();
+  return { id: cand, conflict: desired };
+}
+
 function onAgent(sock) {
   let clientId = null;
   let buf = '';
@@ -37,7 +74,7 @@ function onAgent(sock) {
       let msg; try { msg = JSON.parse(line); } catch (e) { continue; }
 
       if (msg.op === 'auth') {
-        const token = CLIENTS[msg.client];
+        const token = tokenOf(CLIENTS[msg.client]);
         const expect = token ? crypto.createHmac('sha256', token).update(nonce).digest('hex') : '';
         if (token && msg.mac === expect) {
           clientId = String(msg.client);
@@ -101,6 +138,12 @@ const controlServer = net.createServer((cliSock) => {
 function reply(cliSock, obj) { try { cliSock.write(JSON.stringify(obj) + '\n'); } catch (e) {} }
 
 function routeControl(cliSock, req) {
+  if (req.op === 'register') {
+    const r = registerClient(req.id, req.machine, req.token);
+    reply(cliSock, Object.assign({ ev: 'registered' }, r));
+    try { cliSock.end(); } catch (e) {}
+    return;
+  }
   if (req.op === 'status') {
     reply(cliSock, {
       ev: 'status',

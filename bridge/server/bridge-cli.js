@@ -19,6 +19,7 @@ function usage() {
   console.log([
     'usage:',
     '  bridge-cli status',
+    '  bridge-cli register --id <desired> --machine <machineId> --token <token>',
     '  bridge-cli exec [--client ID] [--cwd DIR] -- <command...>',
     '  bridge-cli read [--client ID] --path <remote path> [--out <local file>]',
     '  bridge-cli write [--client ID] --path <remote path> --file <local file>',
@@ -37,6 +38,9 @@ while (argv.length && argv[0].startsWith('--')) {
   else if (k === 'path') flags.path = argv.shift();
   else if (k === 'file') flags.file = argv.shift();
   else if (k === 'out') flags.out = argv.shift();
+  else if (k === 'id') flags.id = argv.shift();
+  else if (k === 'machine') flags.machine = argv.shift();
+  else if (k === 'token') flags.token = argv.shift();
   else { console.error('[cli] unknown flag: --' + k); process.exit(1); }
 }
 if (argv[0] === '--') argv.shift();
@@ -61,6 +65,7 @@ function connect(onLine, onError) {
 }
 
 function buildPayload() {
+  if (sub === 'register') return { id: flags.id, machine: flags.machine, token: flags.token };
   if (sub === 'exec') return { cmd: rest.join(' ') };
   if (sub === 'write') {
     const data = fs.readFileSync(flags.file);
@@ -71,6 +76,10 @@ function buildPayload() {
 
 let exitCode = 0;
 connect((msg) => {
+  if (sub === 'register') {
+    if (msg.ev === 'registered') { console.log(msg.id); process.exit(0); }
+    console.error('[cli] register failed: ' + (msg.error || 'unknown')); process.exit(1);
+  }
   if (sub === 'status') {
     if (msg.ev === 'status') {
       if (!msg.clients.length) console.log('(没有已连接的客户端)');
