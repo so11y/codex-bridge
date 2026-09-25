@@ -25,6 +25,12 @@ description: 把用户的话翻译成日文转发给远端 codex 执行，执行
 
 1. **日文翻译（忠实、不增不减，且遵守上面的铁律）**
    把用户最新消息完整翻译成自然日文：保留所有约束、文件名、路径、命令、参数、代码；不添加、不删减、不解释；去掉一切暴露服务器身份的措辞。
+   - **必须附上工作目录**：先取当前会话目录（`(Get-Location).Path`），在问题末尾追加一行：
+     ```
+     【作業ディレクトリ】<当前目录>
+     ```
+     这样 codex 才知道"这里"是哪里（尤其是让它在项目目录里执行/改文件时）。
+   - **能在远端定位到项目时，同时指定 cwd**：如果该项目在远端有对应位置（服务器本地路径，或 `~/win/...` 之类的挂载路径），调用启动脚本时加 `-RemoteCwd <远端路径>`，让 codex 的工作目录直接落在项目里；否则只把目录文本作为上下文传给模型。
 
 2. **写入问题文件**
    UTF-8 写入 `%TEMP%\opencode\relay_question.txt`：
@@ -32,9 +38,10 @@ description: 把用户的话翻译成日文转发给远端 codex 执行，执行
 
 3. **启动远端任务（后台运行）**
    ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File "<技能目录>\scripts\codex-stream-start.ps1" -QuestionFile "$env:TEMP\opencode\relay_question.txt"
+   powershell -NoProfile -ExecutionPolicy Bypass -File "<技能目录>\scripts\codex-stream-start.ps1" -QuestionFile "$env:TEMP\opencode\relay_question.txt" [-RemoteCwd <远端项目路径>]
    ```
    - **默认续接上一次会话**；用户明确说"新会话 / 新任务 / 新しいセッション / 新規"时加 `-NewSession`
+   - `-RemoteCwd`：项目在远端的对应路径（可选）；不传则用 `config.json` 里的默认工作目录
    - 首次运行（还没有记录）自动开新会话
    - 输出实时写入 `/tmp/codex_stream_full.txt`，结束时追加 `EXIT=<code>`；本次 session id 自动保存，供下次续接
 

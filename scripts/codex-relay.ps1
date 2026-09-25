@@ -1,6 +1,7 @@
 ﻿param(
     [Parameter(Mandatory = $true)][string]$QuestionFile,
-    [switch]$NewSession
+    [switch]$NewSession,
+    [string]$RemoteCwd
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,9 @@ if (-not $question.Trim()) { Write-Output "ERROR: 问题文件为空"; exit 1 }
 $qb = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($question))
 $mode = if ($NewSession) { '0' } else { '1' }
 $r = $Cfg.remote
+
+$workdir = [string]$r.workdir
+if ($RemoteCwd) { $workdir = $RemoteCwd }
 
 $remote = @'
 export PATH="$HOME/.local/node/bin:$HOME/.local/bin:$PATH"
@@ -40,7 +44,7 @@ base64 -w0 $R
 
 $remote = $remote.Replace('@QB64@', $qb).
     Replace('@RMODE@', $mode).
-    Replace('@WORKDIR@', [string]$r.workdir).
+    Replace('@WORKDIR@', $workdir).
     Replace('@SESSION@', [string]$r.sessionFile).
     Replace('@CODEXBIN@', [string]$Cfg.codex.binPath)
 
